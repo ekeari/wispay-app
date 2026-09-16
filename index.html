@@ -1,0 +1,146 @@
+n-bottom: 12px; }
+    .tab { flex: 1; padding: 10px; background: #334155; border-radius: 8px; text-align: center; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .tab.active { background: #0284c7; }
+    .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 8px; }
+    .slot { padding: 12px; background: #334155; text-align: center; border-radius: 6px; font-weight: bold; cursor: pointer; }<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wispay Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 16px; }
+    .card { background: #1e293b; border-radius: 12px; padding: 16px; margin-bottom: 16px; border: 1px solid #334155; }
+    h2, h3 { margin-top: 0; color: #38bdf8; }
+    input, button { width: 100%; padding: 12px; margin-top: 8px; border-radius: 8px; border: none; box-sizing: border-box; }
+    input { background: #334155; color: #fff; }
+    button { background: #0284c7; color: white; font-weight: bold; cursor: pointer; }
+    .tabs { display: flex; gap: 8px; margi
+    .slot.selected { background: #16a34a; }
+    .slot.taken { background: #dc2626; cursor: not-allowed; opacity: 0.6; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+  <!-- STEP 1: PIN LOCK / LOGIN -->
+  <div id="auth-screen" class="card">
+    <h2>🔒 Wispay Access</h2>
+    <p>Enter your WhatsApp Number & 4-Digit Security PIN to enter.</p>
+    <input type="tel" id="phone" placeholder="WhatsApp Number (e.g. 08012345678)">
+    <input type="password" id="pin" maxlength="4" placeholder="4-Digit Security PIN">
+    <button onclick="login()">Unlock Wispay</button>
+  </div>
+
+  <!-- STEP 2: MAIN DASHBOARD -->
+  <div id="main-screen" class="hidden">
+    <div class="card">
+      <h3>👋 Welcome to Wispay</h3>
+      <p>Secure Ajo Group Management</p>
+    </div>
+
+    <!-- RULES & HOW IT WORKS -->
+    <div class="card">
+      <h3>ℹ️ How Wispay Works & Rules</h3>
+      <ul style="padding-left: 20px; font-size: 14px; color: #cbd5e1;">
+        <li><b>Account Verification:</b> Mandatory upload of a bank transaction proof up to ₦50,000 (OPay, PalmPay, Bank).</li>
+        <li><b>Slot Deduction Rule:</b> Registration fees are automatically deducted on your designated payout/parking slot day for any chosen plan.</li>
+        <li><b>Multi-Plan Option:</b> You can select up to 3 slots across different plans simultaneously.</li>
+      </ul>
+    </div>
+
+    <!-- BANK PROOF UPLOAD -->
+    <div class="card">
+      <h3>📜 Mandatory Bank Proof (₦50k Activity)</h3>
+      <p style="font-size: 12px; color: #94a3b8;">Upload proof showing transaction history up to ₦50,000.</p>
+      <input type="file" id="bank-proof" accept="image/*">
+      <button onclick="submitBankProof()">Submit Bank Proof</button>
+      <div id="proof-status" style="margin-top: 8px; font-weight: bold; color: #f59e0b;"></div>
+    </div>
+
+    <!-- AJO PLANS TABS -->
+    <div class="card">
+      <h3>📋 Choose Ajo Plans & Positions</h3>
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('2k')">₦2,000</div>
+        <div class="tab" onclick="switchTab('5k')">₦5,000</div>
+        <div class="tab" onclick="switchTab('10k')">₦10,000</div>
+      </div>
+
+      <div id="slots-container">
+        <p style="font-size: 13px; color: #94a3b8;">Select up to 3 positions (1-10):</p>
+        <div class="grid" id="slots-grid"></div>
+      </div>
+      <button style="margin-top: 16px; background: #16a34a;" onclick="submitSlots()">Confirm & Submit Selected Slots</button>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    let selectedSlots = [];
+    let currentPlan = '2k';
+
+    function login() {
+      const phone = document.getElementById('phone').value;
+      const pin = document.getElementById('pin').value;
+      if (phone.length >= 11 && pin.length === 4) {
+        document.getElementById('auth-screen').classList.add('hidden');
+        document.getElementById('main-screen').classList.remove('hidden');
+        renderSlots();
+      } else {
+        alert('Please enter a valid WhatsApp Number and 4-digit PIN.');
+      }
+    }
+
+    function switchTab(plan) {
+      currentPlan = plan;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      renderSlots();
+    }
+
+    function renderSlots() {
+      const grid = document.getElementById('slots-grid');
+      grid.innerHTML = '';
+      for (let i = 1; i <= 10; i++) {
+        const slotKey = `${currentPlan}-slot-${i}`;
+        const div = document.createElement('div');
+        div.className = `slot ${selectedSlots.includes(slotKey) ? 'selected' : ''}`;
+        div.innerText = `#${i}`;
+        div.onclick = () => toggleSlot(slotKey);
+        grid.appendChild(div);
+      }
+    }
+
+    function toggleSlot(slotKey) {
+      if (selectedSlots.includes(slotKey)) {
+        selectedSlots = selectedSlots.filter(s => s !== slotKey);
+      } else {
+        if (selectedSlots.length >= 3) {
+          alert('You can select a maximum of 3 slots total.');
+          return;
+        }
+        selectedSlots.push(slotKey);
+      }
+      renderSlots();
+    }
+
+    function submitBankProof() {
+      document.getElementById('proof-status').innerText = '⌛ Verification Pending Admin Review...';
+      tg.sendData(JSON.stringify({ action: 'bank_proof_submitted' }));
+    }
+
+    function submitSlots() {
+      if (selectedSlots.length === 0) {
+        alert('Please select at least one slot position.');
+        return;
+      }
+      tg.sendData(JSON.stringify({ action: 'slots_selected', slots: selectedSlots }));
+      alert('Slots requested! Status set to Pending Admin Approval.');
+    }
+  </script>
+</body>
+</html>
